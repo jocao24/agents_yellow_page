@@ -1,4 +1,6 @@
 import Pyro4
+
+from domain.class_for_yp.manage_data_yp import ManageDataYellowPage
 from utils.helpers import *
 from logs.logs import print_agents
 from utils.types.agent_server_type import AgentServerType
@@ -9,7 +11,7 @@ from utils.types.client_server_type import ClientServerType
 class YellowPage(object):
     def __init__(self, nameserver):
         self.agents = {}
-        self.nameserver = Pyro4.locateNS()
+        self.nameserver = nameserver
 
     @Pyro4.expose
     def register_agent(self, data_agent: AgentServerType):
