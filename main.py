@@ -1,4 +1,9 @@
+import sys
+import threading
+
 import Pyro4
+
+from manage_logs.manage_logs import start_new_session_log, log_message, get_end_session_log
 from utils.validate_ip import validate_ip
 from domain.class_for_yp.manage_data_yp import ManageDataYellowPage
 from domain.models.yellow_page import YellowPage
@@ -43,18 +48,51 @@ def request_ipns():
     return ip_yp
 
 
+def daemon_loop():
+    daemon.requestLoop()
+
+
+def check_finally_event():
+    finally_yp.wait()
+    log_message("Yellow Page Finally. Shutting down...")
+    daemon.shutdown()
+    sys.exit(0)
+
+
 if __name__ == '__main__':
-    print("Starting yellow_page...")
+    start_new_session_log()
+    finally_yp = threading.Event()
     ip_name_server = request_ipns()
     ManageDataYellowPage().save_data_yp(ip_name_server)
+    log_message(f"IP of the nameserver: {ip_name_server}")
     nameserver = Pyro4.locateNS(host=ip_name_server, port=9090)
-    print("Nameserver localized: ", nameserver)
-    server_daemon = Pyro4.Daemon(host=ip_local)
-    print("Instantiating the Yellow Page...")
+    log_message(f"Nameserver located in: {ip_name_server}:9090")
+    daemon = Pyro4.Daemon(host=ip_local)
     server_yellow_page = YellowPage(nameserver)
-    print("Yellow page object instantiated correctly")
-    server_uri = server_daemon.register(server_yellow_page)
+    server_uri = daemon.register(server_yellow_page)
     name_yellow_page = 'yellow_page@' + ip_local
     nameserver.register(name_yellow_page, server_uri)
-    print("Yellow page yellow_page registered with URI: ", server_uri)
-    server_daemon.requestLoop()
+    log_message(f"Yellow Page registered with URI: {server_uri}")
+    log_message("Yellow Page running...")
+    daemon_thread = threading.Thread(target=daemon_loop)
+    daemon_thread.start()
+
+    check_finally_yp = threading.Thread(target=check_finally_event)
+    check_finally_yp.start()
+
+    while True:
+        print("1. View logs")
+        print("2. Exit")
+        option = input("Enter the number of the option you want to execute: ")
+        if option == '1':
+            logs = get_end_session_log()
+            print("===============================================================")
+            print(logs)
+            print("===============================================================")
+        elif option == '2':
+            finally_yp.set()
+            exit()
+        else:
+            print("Invalid option. Please enter a valid option.")
+
+
