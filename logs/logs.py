@@ -2,9 +2,8 @@ import tabulate
 
 
 def print_agents(agents):
-    headers = ['id', 'Name', 'IP Address', 'Description', 'Skills', 'Registration Time']
-    agent_data = [
-        [id, info['name'], info['ip'], info['description'], info['skills'], info['time'].strftime('%Y-%m-%d %H:%M:%S')]
-        for id, info in agents.items()]
-    print("Summary of Agents:")
+    headers = ["ID", "Name", "IP", "Description", "Skills", "Time"]
+    agent_data = []
+    for agent in agents:
+        agent_data.append([agent['id'], agent['name'], agent['ip'], agent['description'], agent['skills'], agent['time']])
     print(tabulate.tabulate(agent_data, headers=headers))

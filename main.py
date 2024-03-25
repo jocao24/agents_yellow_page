@@ -2,8 +2,11 @@ import sys
 import threading
 
 import Pyro4
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import hashes
 
-from manage_logs.manage_logs import start_new_session_log, log_message, get_end_session_log
+from logs.logs import print_agents
+from manage_logs.manage_logs import start_new_session_log, log_message, get_end_session_log, get_all_agents_registered
 from utils.validate_ip import validate_ip
 from domain.class_for_yp.manage_data_yp import ManageDataYellowPage
 from domain.models.yellow_page import YellowPage
@@ -68,10 +71,11 @@ if __name__ == '__main__':
     nameserver = Pyro4.locateNS(host=ip_name_server, port=9090)
     log_message(f"Nameserver located in: {ip_name_server}:9090")
     daemon = Pyro4.Daemon(host=ip_local)
-    server_yellow_page = YellowPage(nameserver)
+    server_yellow_page = YellowPage(nameserver, ip_name_server)
     server_uri = daemon.register(server_yellow_page)
     name_yellow_page = 'yellow_page@' + ip_local
     nameserver.register(name_yellow_page, server_uri)
+    server_yellow_page.server_uri = server_uri
     log_message(f"Yellow Page registered with URI: {server_uri}")
     log_message("Yellow Page running...")
     daemon_thread = threading.Thread(target=daemon_loop)
@@ -82,7 +86,9 @@ if __name__ == '__main__':
 
     while True:
         print("1. View logs")
-        print("2. Exit")
+        print("2. View all agents registered")
+        print("3. View Shared Key for register gateway")
+        print("4. Exit")
         option = input("Enter the number of the option you want to execute: ")
         if option == '1':
             logs = get_end_session_log()
@@ -90,6 +96,16 @@ if __name__ == '__main__':
             print(logs)
             print("===============================================================")
         elif option == '2':
+            agents_registered = get_all_agents_registered()
+            print("==============================================================================================================================")
+            print_agents(agents_registered)
+            print("==============================================================================================================================")
+        elif option == '3':
+            shared_key = server_yellow_page.shared_key
+            print(f"The shared key is: {shared_key}")
+            print("The shared key has been generated. Please enter the shared key in the gateway.")
+
+        elif option == '4':
             finally_yp.set()
             exit()
         else:
