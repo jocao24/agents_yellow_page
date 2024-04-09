@@ -1,10 +1,6 @@
 import sys
 import threading
-
 import Pyro4
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives import hashes
-
 from logs.logs import print_agents
 from manage_logs.manage_logs import start_new_session_log, log_message, get_end_session_log, get_all_agents_registered
 from utils.validate_ip import validate_ip
