@@ -1,50 +1,66 @@
 import sys
 import threading
 import Pyro4
-from logs.logs import print_agents
-from manage_logs.manage_logs import start_new_session_log, log_message, get_end_session_log, get_all_agents_registered
-from utils.validate_ip import validate_ip
-from domain.class_for_yp.manage_data_yp import ManageDataYellowPage
-from domain.models.yellow_page import YellowPage
-from utils.get_ip import get_ip
+from src.manage_data import start_new_session_log, log_message, get_end_session_log, get_all_agents_registered
+from src.security.data_management import DataManagement
+from src.utils.print_logs import print_agents
+from src.yellow_page_remote_object import YellowPage
+from src.utils.get_ip import get_ip
+import socket
+
+from src.utils.validate_ip import validate_ip
 
 ip_local = get_ip()
 
 
 def request_ip() -> str:
-    request_ip = True
-    while request_ip:
-        ip_yp = input("Enter the IP of the nameserver. If it is the same as the NameServer, press enter: ")
-        if ip_yp:
-            is_valid_ip = validate_ip(ip_yp)
+    while True:
+        ip_ns = input("Enter the IP of the nameserver. If it is the same as the NameServer, press enter: ")
+        if ip_ns:
+            is_valid_ip = validate_ip(ip_ns)
             if not is_valid_ip:
                 print("The IP entered is not valid. Please enter a valid IP.")
                 continue
             break
-        ip_yp = get_ip()
+        ip_ns = get_ip()
         break
-    return ip_yp
+    return ip_ns
 
 
-def request_ipns():
+def is_ip_active(ip: str, port: int = 9090) -> bool:
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.settimeout(2)  # Timeout después de 2 segundos
+    try:
+        s.connect((ip, port))
+        s.close()
+        return True
+    except socket.error:
+        return False
+
+
+def request_ipns(ip_ns_saved):
     ip_ns = None
     while True:
-        is_valid_ip = False
-        opt_select = input("Do you want to use the nameserver IP saved in the configuration file? (y/n): ")
+        opt_select = 'n'
+        if ip_ns_saved:
+            opt_select = input(f"Do you want to use the NS IP '{ip_ns_saved}' saved? (y/n) default: n: ")
         if opt_select.lower() == 'y':
-            ip_yp = ManageDataYellowPage().get_data_yp()
-            if ip_yp:
-                is_valid_ip = validate_ip(ip_yp)
-            if not is_valid_ip or not ip_yp:
-                print("The IP of the ns saved in the configuration file is not valid. Please enter a valid IP.")
-                ip_yp = request_ip()
+            if validate_ip(ip_ns_saved):
+                if is_ip_active(ip_ns_saved):
+                    ip_ns = ip_ns_saved
+                    break
+                else:
+                    print(f"The nameserver at {ip_ns_saved} is not active. Please enter a valid IP.")
+            if not ip_ns:
+                print("The IP of the ns saved is not valid or not active. Please enter a valid IP.")
+                ip_ns = request_ip()
             break
         elif opt_select.lower() == 'n':
-            ip_yp = request_ip()
+            ip_ns = request_ip()
             break
         else:
             print("Invalid option. Please enter a valid option.")
-    return ip_yp
+    return ip_ns
 
 
 def daemon_loop():
@@ -60,9 +76,12 @@ def check_finally_event():
 
 if __name__ == '__main__':
     start_new_session_log()
+    data_management_instance = DataManagement()
+    current_data = data_management_instance.load()
     finally_yp = threading.Event()
-    ip_name_server = request_ipns()
-    ManageDataYellowPage().save_data_yp(ip_name_server)
+    ip_name_server = request_ipns(current_data['data_ultimate_connection']['ip_ultimate_ns'])
+    current_data['data_ultimate_connection']['ip_ultimate_ns'] = ip_name_server
+    data_management_instance.save(current_data)
     log_message(f"IP of the nameserver: {ip_name_server}")
     nameserver = Pyro4.locateNS(host=ip_name_server, port=9090)
     log_message(f"Nameserver located in: {ip_name_server}:9090")
@@ -93,18 +112,19 @@ if __name__ == '__main__':
             print("===============================================================")
         elif option == '2':
             agents_registered = get_all_agents_registered()
-            print("==============================================================================================================================")
+            print(
+                "==============================================================================================================================")
             print_agents(agents_registered)
-            print("==============================================================================================================================")
+            print(
+                "==============================================================================================================================")
         elif option == '3':
             shared_key = server_yellow_page.shared_key
             print(f"The shared key is: {shared_key}")
             print("The shared key has been generated. Please enter the shared key in the gateway.")
 
         elif option == '4':
+            nameserver.remove(name_yellow_page, server_uri)
             finally_yp.set()
             exit()
         else:
             print("Invalid option. Please enter a valid option.")
-
-
