@@ -26,7 +26,6 @@ class SecureStorage:
         salt = os.urandom(16)
         key = self.__derive_key(salt)
         fernet = Fernet(key)
-
         data_str = json.dumps(data)
         encrypted_data = fernet.encrypt(data_str.encode())
 
@@ -46,7 +45,7 @@ class SecureStorage:
             encrypted_data = file.read()
 
         key = self.__derive_key(salt)
-        fernet = Fernet(key)
 
+        fernet = Fernet(key)
         decrypted_data = fernet.decrypt(encrypted_data)
         return json.loads(decrypted_data.decode())

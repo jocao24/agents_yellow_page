@@ -5,7 +5,7 @@ from src.types.save_data_type import SaveDataType
 
 
 class DataManagement:
-    _instance = None  # Variable de clase para almacenar la instancia singleton
+    _instance = None
 
     def __new__(cls, *args, **kwargs):
         if not cls._instance:
@@ -13,13 +13,11 @@ class DataManagement:
         return cls._instance
 
     def __init__(self):
-        if not hasattr(self, 'initialized'):  # Esto previene la inicialización múltiple
+        if not hasattr(self, 'initialized'):
             self.file_path = 'data/data_yp.enc'
             self.secure_storage = SecureStorage(get_system_uuid().encode(), self.file_path)
             self._ensure_file_exists()
             self.initialized = True
-
-    # El resto de tu implementación de DataManagement...
 
     def _ensure_file_exists(self):
         if not os.path.exists(self.file_path):
@@ -30,7 +28,6 @@ class DataManagement:
             })
 
     def save(self, data: SaveDataType):
-        # Convert sets to lists for JSON serialization
         data_for_storage = {
             'logs': data['logs'],
             'data_ultimate_connection': data['data_ultimate_connection'],
@@ -39,9 +36,18 @@ class DataManagement:
         self.secure_storage.encrypt_data(data_for_storage)
 
     def load(self) -> SaveDataType:
-        data_from_storage = self.secure_storage.decrypt_data()
+        logs = ''
+        data_ultimate_connection = {'ip_ultimate_ns': '', 'ultimate_shared_key_with_ns': ''}
+        angents_data = {}
+        try:
+            data_from_storage = self.secure_storage.decrypt_data()
+            logs = data_from_storage['logs']
+            data_ultimate_connection = data_from_storage['data_ultimate_connection']
+            angents_data = data_from_storage['angents_data']
+        except Exception as e:
+            print(f"Error loading data: {e}")
         return {
-            'logs': data_from_storage['logs'],
-            'data_ultimate_connection': data_from_storage['data_ultimate_connection'],
-            'angents_data': data_from_storage['angents_data']
+            'logs': logs,
+            'data_ultimate_connection': data_ultimate_connection,
+            'angents_data': angents_data
         }
