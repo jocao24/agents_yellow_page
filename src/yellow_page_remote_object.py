@@ -173,17 +173,14 @@ class YellowPage(AgentManager, object):
     def start_monitoring(self):
         def monitor():
             self.management_logs.log_message("YellowPage Remote Object -> Monitoring thread started")
-            previous_agent_ids = set()
             while True:
-                self.verify_agents_availability()
-                current_agent_ids = set(get_all_agents_registered().keys())
-                if current_agent_ids != previous_agent_ids:
+                agets_deleted = self.verify_agents_availability()
+                if len(agets_deleted) > 0:
                     self.management_logs.log_message("YellowPage Remote Object -> Agents list updated")
                     send_list_agents(self.agents, self.keys_asimetrics, self.nameserver, self.management_logs)
                     if self.agents != {}:
                         self.management_logs.log_message("YellowPage Remote Object -> Saving agents in the data file")
                         register_agents(self.agents)
-                previous_agent_ids = copy.deepcopy(current_agent_ids)
                 threading.Event().wait(5)
 
         monitoring_thread = threading.Thread(target=monitor)
@@ -208,6 +205,9 @@ class YellowPage(AgentManager, object):
                 self.management_logs.log_message(f"Removing agent {id_agent} from the list of agents")
                 del self.agents[id_agent]
 
+            if id_agent in self.keys_asimetrics:
+                del self.keys_asimetrics[id_agent]
+
         self.keys_asimetrics = {}
         for id_agent, agent_info in self.agents.items():
             if 'keys_asymetrics' in agent_info:
@@ -219,3 +219,4 @@ class YellowPage(AgentManager, object):
                     "private_key_generated": private_key_generated,
                     "public_key_generated": public_key_generated
                 }
+        return unavailable_agents

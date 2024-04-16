@@ -70,7 +70,7 @@ def daemon_loop(daemon):
     try:
         daemon.requestLoop()
     except KeyboardInterrupt:
-        pass  # Allow exit on Ctrl-C or any other interruption signal
+        pass
 
 
 
@@ -102,7 +102,7 @@ if __name__ == '__main__':
     management_logs.log_message(f"Yellow Page registered with URI: {server_uri}")
     management_logs.log_message("Yellow Page running...")
     daemon_thread = threading.Thread(target=daemon_loop, args=(daemon,))
-    daemon_thread.daemon = True  # Mark as a daemon thread
+    daemon_thread.daemon = True
     daemon_thread.start()
 
     check_finally_thread = threading.Thread(target=check_finally_event, args=(finally_yp, daemon, management_logs))
