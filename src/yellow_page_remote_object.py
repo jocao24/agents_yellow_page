@@ -172,15 +172,16 @@ class YellowPage(AgentManager, object):
 
     def start_monitoring(self):
         def monitor():
-            self.management_logs.log_message("YellowPage Remote Object -> Monitoring thread started")
+            previous_agent_ids = set()
             while True:
-                agets_deleted = self.verify_agents_availability()
-                if len(agets_deleted) > 0:
-                    self.management_logs.log_message("YellowPage Remote Object -> Agents list updated")
+                agents_active = self.verify_agents_availability()
+                current_agent_ids = set(get_all_agents_registered().keys())
+                if current_agent_ids != previous_agent_ids or agents_active != []:
                     send_list_agents(self.agents, self.keys_asimetrics, self.nameserver, self.management_logs)
                     if self.agents != {}:
-                        self.management_logs.log_message("YellowPage Remote Object -> Saving agents in the data file")
                         register_agents(self.agents)
+
+                previous_agent_ids = copy.deepcopy(current_agent_ids)
                 threading.Event().wait(5)
 
         monitoring_thread = threading.Thread(target=monitor)
