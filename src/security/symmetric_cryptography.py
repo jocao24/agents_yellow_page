@@ -3,7 +3,7 @@ from os import urandom
 from cryptography.fernet import Fernet
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-from Pyro4.util import json
+import json
 
 from src.manage_logs import ManagementLogs
 

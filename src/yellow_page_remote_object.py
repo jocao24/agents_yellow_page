@@ -1,8 +1,11 @@
 import base64
 import copy
 import threading
-import Pyro4
-from Pyro4.util import json
+import Pyro5.api
+import Pyro5.core
+import Pyro5.errors
+import Pyro5.nameserver
+import json
 from src.agent_management import AgentManager
 from src.manage_data import get_all_agents_registered, register_agents
 from src.manage_logs import ManagementLogs
@@ -24,7 +27,7 @@ from src.utils.helpers import get_datetime
 
 
 class YellowPage(AgentManager, object):
-    def __init__(self, nameserver: Pyro4.Proxy, ip_ns: str, management_logs: ManagementLogs):
+    def __init__(self, nameserver: Pyro5.nameserver.NameServer, ip_ns: str, management_logs: ManagementLogs):
         super().__init__(ip_ns, management_logs)
         self.management_logs = management_logs
         self.management_logs.log_message('YellowPage Remote Object -> Initializing')
@@ -51,10 +54,10 @@ class YellowPage(AgentManager, object):
         self.management_logs.log_message('YellowPage Remote Object -> Initializing monitoring thread')
         self.start_monitoring()
 
-    @Pyro4.expose
+    @Pyro5.api.expose
     def request_register(self, request: dict):
         id_agent = request["id"]
-        ip = Pyro4.current_context.client_sock_addr[0]
+        ip = Pyro5.current_context.client_sock_addr[0]
         self.management_logs.log_message(f"YellowPage Remote Object -> {id_agent} - {ip} - Requesting registration")
         self.management_logs.log_message(
             f"YellowPage Remote Object -> {id_agent} - {ip} - Decrypting request sent by the Deamon")
@@ -85,7 +88,7 @@ class YellowPage(AgentManager, object):
         self.management_logs.log_message(
             f"YellowPage Remote Object -> {id_agent} - {ip} - Successfully generated the asymmetric keys")
 
-    @Pyro4.expose
+    @Pyro5.api.expose
     def get_access_data_for_register(self, id_agent: str):
         self.management_logs.log_message(
             f"YellowPage Remote Object -> {id_agent} - Requesting access data for registration")
@@ -99,10 +102,10 @@ class YellowPage(AgentManager, object):
             "server_uri": server_uri_base64
         }, id_agent, self.management_logs)
 
-    @Pyro4.expose
+    @Pyro5.api.expose
     def register_agent(self, request):
         try:
-            ip = Pyro4.current_context.client_sock_addr[0]
+            ip = Pyro5.current_context.client_sock_addr[0]
             id_agent = request.get("id")
             self.management_logs.log_message(f"YellowPage Remote Object -> {id_agent} - {ip} - Registering agent")
 
@@ -128,7 +131,7 @@ class YellowPage(AgentManager, object):
             self.agents[id_agent] = {
                 'id': id_agent,
                 'time': str(get_datetime()),
-                'ip': Pyro4.current_context.client_sock_addr[0],
+                'ip': Pyro5.current_context.client_sock_addr[0],
                 'name': decrypted_data_dict['name'],
                 'description': decrypted_data_dict['description'],
                 'skills': decrypted_data_dict['skills'],
@@ -151,9 +154,14 @@ class YellowPage(AgentManager, object):
             self.management_logs.log_message(f"Error registering agent: {e}")
             return False
 
-    @Pyro4.expose
-    def ping(self, iv, data):
+    @Pyro5.api.expose
+    def ping(self):
         self.management_logs.log_message("YellowPage Remote Object -> Ping")
+        return "pong"
+
+    @Pyro5.api.expose
+    def register_ns(self, iv, data):
+        self.management_logs.log_message("YellowPage Remote Object -> Registering NameServer")
         try:
             self.management_logs.log_message("YellowPage Remote Object -> Decrypting data")
             data_decrypted = decrypt_data_symetric_key(self.shared_key_hash, iv, data, self.management_logs)
@@ -188,13 +196,13 @@ class YellowPage(AgentManager, object):
         monitoring_thread.daemon = True
         monitoring_thread.start()
 
-    @Pyro4.expose
+    @Pyro5.api.expose
     def verify_agents_availability(self):
         unavailable_agents = []
         for id_agent, agent_info in list(self.agents.items()):
             try:
                 lookup = self.nameserver.lookup(id_agent)
-                agent_proxy = Pyro4.Proxy(lookup)
+                agent_proxy = Pyro5.api.Proxy(lookup)
                 agent_proxy._pyroTimeout = 2
                 agent_proxy.ping()
             except Exception as e:

@@ -1,8 +1,10 @@
 import os
 import sys
 import threading
-import Pyro4
-
+import Pyro5.core
+import Pyro5.errors
+import Pyro5.nameserver
+import Pyro5.api
 from src.manage_data import get_all_agents_registered
 from src.manage_logs import ManagementLogs
 from src.security.data_management import DataManagement
@@ -91,13 +93,13 @@ if __name__ == '__main__':
     current_data['data_ultimate_connection']['ip_ultimate_ns'] = ip_name_server
     data_management_instance.save(current_data)
     management_logs.log_message(f"IP of the nameserver: {ip_name_server}")
-    nameserver = Pyro4.locateNS(host=ip_name_server, port=9090)
+    nameserver = Pyro5.core.locate_ns(host=ip_name_server, port=9090)
     management_logs.log_message(f"Nameserver located in: {ip_name_server}:9090")
-    daemon = Pyro4.Daemon(host=ip_local)
+    daemon = Pyro5.api.Daemon(host=ip_local)
     server_yellow_page = YellowPage(nameserver, ip_name_server, management_logs)
     server_uri = daemon.register(server_yellow_page)
-    name_yellow_page = 'yellow_page@' + ip_local
-    nameserver.register(name_yellow_page, server_uri)
+    name_yellow_page = 'yellow_page' + ip_local
+    nameserver.register(name_yellow_page, server_uri, metadata={name_yellow_page})
     server_yellow_page.server_uri = server_uri
     management_logs.log_message(f"Yellow Page registered with URI: {server_uri}")
     management_logs.log_message("Yellow Page running...")

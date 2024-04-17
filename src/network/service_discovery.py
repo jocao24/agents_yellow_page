@@ -1,5 +1,5 @@
 import socket
-import Pyro4
+import Pyro5.nameserver
 
 from src.manage_logs import ManagementLogs
 from src.security.key_management import encrypt_data_with_public_key
@@ -14,7 +14,7 @@ def get_host_name(ip_address, management_logs: ManagementLogs):
         return None
 
 
-def locate_agent(service_name, nameserver: Pyro4.Proxy, management_logs: ManagementLogs):
+def locate_agent(service_name, nameserver: Pyro5.nameserver.NameServer, management_logs: ManagementLogs):
     management_logs.log_message(f"ServiceDiscovery -> Locating the service {service_name}")
     try:
         service_uri = nameserver.lookup(service_name)
@@ -25,7 +25,7 @@ def locate_agent(service_name, nameserver: Pyro4.Proxy, management_logs: Managem
         return None
 
 
-def send_list_agents(agents: dict, keys_asimetrics: dict, nameserver: Pyro4.Proxy, management_logs: ManagementLogs):
+def send_list_agents(agents: dict, keys_asimetrics: dict, nameserver: Pyro5.nameserver.NameServer, management_logs: ManagementLogs):
     management_logs.log_message("ServiceDiscovery -> Sending list of agents")
     try:
         if agents != {} and len(agents) > 1:
