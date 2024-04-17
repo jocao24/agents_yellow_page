@@ -53,7 +53,7 @@ class YellowPage(AgentManager, object):
     @Pyro4.expose
     def request_register(self, request: dict):
         id_agent = request["id"]
-        ip = Pyro4.current_context.client_sock_addr[0]
+        ip = request["ip_entity"]
         self.management_logs.log_message(f"YellowPage Remote Object -> {id_agent} - {ip} - Requesting registration")
         self.management_logs.log_message(
             f"YellowPage Remote Object -> {id_agent} - {ip} - Decrypting request sent by the Deamon")
