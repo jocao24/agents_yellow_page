@@ -37,9 +37,9 @@ class AgentManager:
         result = shared_key_hash == self.shared_key_hash
         self.management_logs.log_message(f'AgentManager -> Shared key verified: {result}')
 
-    def generate_shared_key_hash(self, shared_key: str):
+    def generate_shared_key_hash(self, shared_key: str, name_device: str):
         self.management_logs.log_message('AgentManager -> Generating shared key hash')
-        shared_key_complete = (shared_key + get_ip() + self.ip_ns + shared_key + self.get_name_device(self.ip_ns) +
+        shared_key_complete = (shared_key + get_ip() + self.ip_ns + shared_key + name_device +
                                shared_key + self.ip_ns + get_ip())
         self.shared_key_hash = self.hash_key(shared_key_complete)
         self.management_logs.log_message('AgentManager -> Shared key hash generated')

@@ -36,7 +36,6 @@ class YellowPage(AgentManager, object):
         data_saved = data_management_instance.load()
         ultimate_shared_key = data_saved['data_ultimate_connection']['ultimate_shared_key_with_ns']
         self.shared_key = ultimate_shared_key if ultimate_shared_key else self.generate_shared_key()
-        self.shared_key_hash = self.generate_shared_key_hash(self.shared_key)
         data_saved['data_ultimate_connection']['ultimate_shared_key_with_ns'] = self.shared_key
         data_management_instance.save(data_saved)
         self.agents = {}
@@ -152,9 +151,11 @@ class YellowPage(AgentManager, object):
             return False
 
     @Pyro4.expose
-    def ping(self, iv, data):
+    def ping(self, iv, data, name_device):
         self.management_logs.log_message("YellowPage Remote Object -> Ping")
         try:
+
+            self.shared_key_hash = self.generate_shared_key_hash(self.shared_key, name_device)
             self.management_logs.log_message("YellowPage Remote Object -> Decrypting data")
             data_decrypted = decrypt_data_symetric_key(self.shared_key_hash, iv, data, self.management_logs)
             self.management_logs.log_message("YellowPage Remote Object -> Data decrypted successfully")
