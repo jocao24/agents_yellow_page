@@ -66,7 +66,6 @@ class YellowPage(AgentManager, object):
         shared_key_ns_agent = data_decrypted["shared_key"]
         key_desencrypted = (ip + code_otp + id_agent + code_otp + shared_key_ns_agent + ip + id_agent +
                             shared_key_ns_agent + code_otp)
-        print('shared_key: ', key_desencrypted)
         key_hash = self.hash_key(key_desencrypted)
 
         self.management_logs.log_message(
