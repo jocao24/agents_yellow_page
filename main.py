@@ -1,10 +1,10 @@
 import os
 import sys
 import threading
+import socket
 import Pyro4
-
 from src.manage_data import get_all_agents_registered
-from src.manage_logs import ManagementLogs
+from src.manage_logs_v_2 import ManagementLogs, ComponentType, LogType
 from src.security.data_management import DataManagement
 from src.utils.print_logs import print_agents
 from src.yellow_page_remote_object import YellowPage
@@ -77,7 +77,7 @@ def daemon_loop(daemon):
 def check_finally_event(finally_yp, daemon, management_logs):
     finally_yp.wait()
     daemon.shutdown()  # Ensure the daemon is shut down cleanly
-    management_logs.log_message("Yellow Page Finally. Shutting down...")
+    management_logs.log_message(ComponentType.YELLOW_PAGE, "Yellow Page Finally. Shutting down...", LogType.REQUEST, True)
     sys.exit(0)  # Normal exit
 
 
@@ -90,17 +90,17 @@ if __name__ == '__main__':
     ip_name_server = request_ipns(current_data['data_ultimate_connection']['ip_ultimate_ns'])
     current_data['data_ultimate_connection']['ip_ultimate_ns'] = ip_name_server
     data_management_instance.save(current_data)
-    management_logs.log_message(f"IP of the nameserver: {ip_name_server}")
+    management_logs.log_message(ComponentType.YELLOW_PAGE, f"IP of the nameserver: {ip_name_server}", LogType.CONNECTION, True)
     nameserver = Pyro4.locateNS(host=ip_name_server, port=9090)
-    management_logs.log_message(f"Nameserver located in: {ip_name_server}:9090")
+    management_logs.log_message(ComponentType.YELLOW_PAGE, f"Nameserver located in: {ip_name_server}:9090", LogType.CONNECTION, True)
     daemon = Pyro4.Daemon(host=ip_local)
     server_yellow_page = YellowPage(nameserver, ip_name_server, management_logs)
     server_uri = daemon.register(server_yellow_page)
     name_yellow_page = 'yellow_page@' + ip_local
     nameserver.register(name_yellow_page, server_uri)
     server_yellow_page.server_uri = server_uri
-    management_logs.log_message(f"Yellow Page registered with URI: {server_uri}")
-    management_logs.log_message("Yellow Page running...")
+    management_logs.log_message(ComponentType.YELLOW_PAGE, f"Yellow Page registered with URI: {server_uri}", LogType.REGISTRATION, True)
+    management_logs.log_message(ComponentType.YELLOW_PAGE, "Yellow Page running...", LogType.START_SESSION, True)
     daemon_thread = threading.Thread(target=daemon_loop, args=(daemon,))
     daemon_thread.daemon = True
     daemon_thread.start()
@@ -113,26 +113,34 @@ if __name__ == '__main__':
         print("1. View logs")
         print("2. View all agents registered")
         print("3. View Shared Key for register gateway")
-        print("4. Exit")
+        print("4. View All Logs")
+        print("5. Save Logs in CSV")
+        print("6. Exit")
         option = input("Enter the number of the option you want to execute: ")
         if option == '1':
-            logs = management_logs.get_end_session_log()
+            logs = management_logs.get_current_session_logs()
             print("===============================================================")
             print(logs)
             print("===============================================================")
         elif option == '2':
             agents_registered = get_all_agents_registered()
-            print(
-                "==============================================================================================================================")
+            print("==============================================================================================================================")
             print_agents(agents_registered)
-            print(
-                "==============================================================================================================================")
+            print("==============================================================================================================================")
         elif option == '3':
             shared_key = server_yellow_page.shared_key
             print(f"The shared key is: {shared_key}")
             print("The shared key has been generated. Please enter the shared key in the gateway.")
 
         elif option == '4':
+            logs = management_logs.get_all_logs()
+            print("===============================================================")
+            print(logs)
+            print("===============================================================")
+        elif option == '5':
+            management_logs.export_logs_to_csv()
+            print("Logs saved successfully.")
+        elif option == '6':
             finally_yp.set()
             break
         else:

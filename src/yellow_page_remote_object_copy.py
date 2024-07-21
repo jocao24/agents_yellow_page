@@ -5,7 +5,7 @@ import Pyro4
 from Pyro4.util import json
 from src.agent_management import AgentManager
 from src.manage_data import get_all_agents_registered, register_agents
-from src.manage_logs_v_2 import ManagementLogs, LogType, ComponentType
+from src.manage_logs import ManagementLogs
 from src.network.service_discovery import send_list_agents
 from src.security.data_management import DataManagement
 from src.security.key_management import (
@@ -27,7 +27,7 @@ class YellowPage(AgentManager, object):
     def __init__(self, nameserver: Pyro4.Proxy, ip_ns: str, management_logs: ManagementLogs):
         super().__init__(ip_ns, management_logs)
         self.management_logs = management_logs
-        self.management_logs.log_message(ComponentType.YELLOW_PAGE_INTEGRATION, 'YellowPage Remote Object -> Initializing', LogType.START_SESSION, True)
+        self.management_logs.log_message('YellowPage Remote Object -> Initializing')
         self.ip_ns = ip_ns
         self.nameserver = nameserver
         self.server_uri = None
@@ -41,31 +41,38 @@ class YellowPage(AgentManager, object):
         self.agents = {}
         self.keys_asimetrics = {}
         self.report_status_completed = threading.Event()
-        self.management_logs.log_message(ComponentType.YELLOW_PAGE_INTEGRATION, 'YellowPage Remote Object -> Uploading agents registered in the end of the last session', LogType.UPLOAD, True)
+        self.management_logs.log_message(
+            'YellowPage Remote Object -> Uploading agents registered in the end of the last session')
         self.agents = get_all_agents_registered()
-        self.management_logs.log_message(ComponentType.YELLOW_PAGE_INTEGRATION, 'YellowPage Remote Object -> Agents uploaded successfully', LogType.UPLOAD, True)
+        self.management_logs.log_message('YellowPage Remote Object -> Agents uploaded successfully')
 
-        self.management_logs.log_message(ComponentType.YELLOW_PAGE_INTEGRATION, 'YellowPage Remote Object -> Initialized', LogType.START_SESSION, True)
-        self.management_logs.log_message(ComponentType.YELLOW_PAGE_INTEGRATION, 'YellowPage Remote Object -> Initializing monitoring thread', LogType.START_SESSION, True)
+        self.management_logs.log_message('YellowPage Remote Object -> Initialized')
+        self.management_logs.log_message('YellowPage Remote Object -> Initializing monitoring thread')
         self.start_monitoring()
 
     @Pyro4.expose
     def request_register(self, request: dict):
         id_agent = request["id"]
         ip = request["ip_entity"]
-        self.management_logs.log_message(ComponentType.YELLOW_PAGE_INTEGRATION, f"YellowPage Remote Object -> {id_agent} - {ip} - Requesting registration {request}", LogType.REQUEST, True)
-        self.management_logs.log_message(ComponentType.YELLOW_PAGE_INTEGRATION, f"YellowPage Remote Object -> {id_agent} - {ip} - Decrypting request sent by the Deamon", LogType.DECRYPTION, True)
-        data_decrypted = decrypt_data_symetric_key(self.shared_key_hash, request["iv"], request["data"], self.management_logs)
-        self.management_logs.log_message(ComponentType.YELLOW_PAGE_INTEGRATION, f"YellowPage Remote Object -> {id_agent} - {ip} - Request decrypted successfully {data_decrypted}", LogType.DECRYPTION, True)
+        self.management_logs.log_message(f"YellowPage Remote Object -> {id_agent} - {ip} - Requesting registration {request}")
+        self.management_logs.log_message(
+            f"YellowPage Remote Object -> {id_agent} - {ip} - Decrypting request sent by the Deamon")
+        data_decrypted = decrypt_data_symetric_key(self.shared_key_hash, request["iv"], request["data"],
+                                                   self.management_logs)
+        self.management_logs.log_message(
+            f"YellowPage Remote Object -> {id_agent} - {ip} - Request decrypted successfully {data_decrypted}")
 
         code_otp = data_decrypted["code_totp"]
         shared_key_ns_agent = data_decrypted["shared_key"]
-        key_desencrypted = (ip + code_otp + id_agent + code_otp + shared_key_ns_agent + ip + id_agent + shared_key_ns_agent + code_otp)
+        key_desencrypted = (ip + code_otp + id_agent + code_otp + shared_key_ns_agent + ip + id_agent +
+                            shared_key_ns_agent + code_otp)
         key_hash = self.hash_key(key_desencrypted)
 
-        self.management_logs.log_message(ComponentType.YELLOW_PAGE_INTEGRATION, f"YellowPage Remote Object -> {id_agent} - {ip} - Decrypting data sent by the Agent {data_decrypted['data_cifrated_yp']}", LogType.DECRYPTION, True)
-        data_decrypted_yp = decrypt_data_symetric_key(key_hash, data_decrypted["data_cifrated_yp"]["iv"], data_decrypted["data_cifrated_yp"]["data"], self.management_logs)
-        self.management_logs.log_message(ComponentType.YELLOW_PAGE_INTEGRATION, f"YellowPage Remote Object -> {id_agent} - {ip} - Data decrypted successfully", LogType.DECRYPTION, True)
+        self.management_logs.log_message(
+            f"YellowPage Remote Object -> {id_agent} - {ip} - Decrypting data sent by the Agent {data_decrypted['data_cifrated_yp']}")
+        data_decrypted_yp = decrypt_data_symetric_key(key_hash, data_decrypted["data_cifrated_yp"]["iv"],
+                                                      data_decrypted["data_cifrated_yp"]["data"], self.management_logs)
+        self.management_logs.log_message(f"YellowPage Remote Object -> {id_agent} - {ip} - Data decrypted successfully")
         public_key_agent = load_public_key(data_decrypted_yp["public_key"], self.management_logs)
         private_key, public_key = generate_keys_asimetrics(self.management_logs)
         public_key_serialized = serialize_public_key(public_key, self.management_logs)
@@ -74,16 +81,18 @@ class YellowPage(AgentManager, object):
             "private_key_generated": private_key,
             "public_key_generated": public_key_serialized
         }
-        self.management_logs.log_message(ComponentType.YELLOW_PAGE_INTEGRATION, f"YellowPage Remote Object -> {id_agent} - {ip} - Successfully generated the asymmetric keys", LogType.KEY_GENERATION, True)
+        self.management_logs.log_message(
+            f"YellowPage Remote Object -> {id_agent} - {ip} - Successfully generated the asymmetric keys")
 
     @Pyro4.expose
     def get_access_data_for_register(self, id_agent: str):
-        self.management_logs.log_message(ComponentType.YELLOW_PAGE_INTEGRATION, f"YellowPage Remote Object -> {id_agent} - Requesting access data for registration", LogType.REQUEST, True)
+        self.management_logs.log_message(
+            f"YellowPage Remote Object -> {id_agent} - Requesting access data for registration")
         public_key_generated = self.keys_asimetrics[id_agent]["public_key_generated"]
         public_key_generated = base64.b64encode(public_key_generated).decode()
         public_key_agent = self.keys_asimetrics[id_agent]["public_key_agent"]
         server_uri_base64 = str(self.server_uri)
-        self.management_logs.log_message(ComponentType.YELLOW_PAGE_INTEGRATION, f"YellowPage Remote Object -> {id_agent} - Access data requested successfully", LogType.RESPONSE, True)
+        self.management_logs.log_message(f"YellowPage Remote Object -> {id_agent} - Access data requested successfully")
         return encrypt_data_with_public_key(public_key_agent, {
             "public_key": public_key_generated,
             "server_uri": server_uri_base64
@@ -94,19 +103,22 @@ class YellowPage(AgentManager, object):
         try:
             ip = Pyro4.current_context.client_sock_addr[0]
             id_agent = request.get("id")
-            self.management_logs.log_message(ComponentType.YELLOW_PAGE_INTEGRATION, f"YellowPage Remote Object -> {id_agent} - {ip} - Registering agent", LogType.REGISTRATION, True)
+            self.management_logs.log_message(f"YellowPage Remote Object -> {id_agent} - {ip} - Registering agent")
 
             iv = request.get("iv")
             data_encripted = request.get("data")
             key = request.get("key")
 
-            self.management_logs.log_message(ComponentType.YELLOW_PAGE_INTEGRATION, f"YellowPage Remote Object -> {id_agent} - {ip} - Decrypting data sent by the agent", LogType.DECRYPTION, True)
+            self.management_logs.log_message(
+                f"YellowPage Remote Object -> {id_agent} - {ip} - Decrypting data sent by the agent")
             private_key = self.keys_asimetrics[id_agent]["private_key_generated"]
             decrypted_data = decrypt_data_with_private_key(key, iv, data_encripted, private_key, self.management_logs)
             decrypted_data_dict = json.loads(decrypted_data.decode("utf-8"))
-            self.management_logs.log_message(ComponentType.YELLOW_PAGE_INTEGRATION, f"YellowPage Remote Object -> {id_agent} - {ip} - Data decrypted successfully", LogType.DECRYPTION, True)
+            self.management_logs.log_message(
+                f"YellowPage Remote Object -> {id_agent} - {ip} - Data decrypted successfully")
 
-            public_key = serialize_and_encode_public_key(self.keys_asimetrics[id_agent]['public_key_agent'], self.management_logs)
+            public_key = serialize_and_encode_public_key(self.keys_asimetrics[id_agent]['public_key_agent'],
+                                                         self.management_logs)
             private_key = self.keys_asimetrics[id_agent]["private_key_generated"]
             private_key_serialized = serialize_and_encode_private_key(private_key, self.management_logs)
             public_key_pem = self.keys_asimetrics[id_agent]["public_key_generated"]
@@ -128,23 +140,25 @@ class YellowPage(AgentManager, object):
                     'private_key': private_key_serialized
                 }
             }
-            self.management_logs.log_message(ComponentType.YELLOW_PAGE_INTEGRATION, f"YellowPage Remote Object -> {id_agent} - {ip} - Agent registered successfully", LogType.REGISTRATION, True)
-            self.management_logs.log_message(ComponentType.YELLOW_PAGE_INTEGRATION, f"YellowPage Remote Object -> {id_agent} - {ip} - Saving the agent in the data file", LogType.SERIALIZATION, True)
+            self.management_logs.log_message(
+                f"YellowPage Remote Object -> {id_agent} - {ip} - Agent registered successfully")
+            self.management_logs.log_message(
+                f"YellowPage Remote Object -> {id_agent} - {ip} - Saving the agent in the data file")
             register_agents(self.agents)
             return True
         except Exception as e:
-            self.management_logs.log_message(ComponentType.YELLOW_PAGE_INTEGRATION, f"Error registering agent: {e}", LogType.ERROR, False)
+            self.management_logs.log_message(f"Error registering agent: {e}")
             return False
 
     @Pyro4.expose
     def ping(self, iv, data, name_device):
-        self.management_logs.log_message(ComponentType.YELLOW_PAGE_INTEGRATION, "YellowPage Remote Object -> Ping", LogType.REQUEST, True)
+        self.management_logs.log_message("YellowPage Remote Object -> Ping")
         try:
 
             self.shared_key_hash = self.generate_shared_key_hash(self.shared_key, name_device)
-            self.management_logs.log_message(ComponentType.YELLOW_PAGE_INTEGRATION, "YellowPage Remote Object -> Decrypting data", LogType.DECRYPTION, True)
+            self.management_logs.log_message("YellowPage Remote Object -> Decrypting data")
             data_decrypted = decrypt_data_symetric_key(self.shared_key_hash, iv, data, self.management_logs)
-            self.management_logs.log_message(ComponentType.YELLOW_PAGE_INTEGRATION, "YellowPage Remote Object -> Data decrypted successfully", LogType.DECRYPTION, True)
+            self.management_logs.log_message("YellowPage Remote Object -> Data decrypted successfully")
             message = str(data_decrypted["message"]).encode()
             return {
                 "message": "pong",
@@ -152,7 +166,7 @@ class YellowPage(AgentManager, object):
             }
 
         except Exception as e:
-            self.management_logs.log_message(ComponentType.YELLOW_PAGE_INTEGRATION, f"Ping Error: {e}", LogType.ERROR, False)
+            self.management_logs.log_message(f"Ping Error: {e}")
             return {
                 "message": "Shared key is not correct "
             }
@@ -185,12 +199,12 @@ class YellowPage(AgentManager, object):
                 agent_proxy._pyroTimeout = 2
                 agent_proxy.ping()
             except Exception as e:
-                self.management_logs.log_message(ComponentType.YELLOW_PAGE_INTEGRATION, f"Agent {id_agent} is not available: {e}", LogType.ERROR, False)
+                self.management_logs.log_message(f"Agent {id_agent} is not available: {e}")
                 unavailable_agents.append(id_agent)
 
         for id_agent in unavailable_agents:
             if id_agent in self.agents:
-                self.management_logs.log_message(ComponentType.YELLOW_PAGE_INTEGRATION, f"Removing agent {id_agent} from the list of agents", LogType.MODIFICATION, True)
+                self.management_logs.log_message(f"Removing agent {id_agent} from the list of agents")
                 del self.agents[id_agent]
 
             if id_agent in self.keys_asimetrics:
@@ -208,4 +222,3 @@ class YellowPage(AgentManager, object):
                     "public_key_generated": public_key_generated
                 }
         return unavailable_agents
-
