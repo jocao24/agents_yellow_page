@@ -40,8 +40,10 @@ class AgentManager:
 
     def generate_shared_key_hash(self, shared_key: str, name_device: str):
         self.management_logs.log_message(ComponentType.AGENT_MANAGEMENT, 'AgentManager -> Generating shared key hash', LogType.KEY_GENERATION, True)
-        shared_key_complete = (shared_key + get_ip() + self.ip_ns + shared_key + name_device +
-                               shared_key + self.ip_ns + get_ip())
+        ip_local = get_ip() or "127.0.0.1"
+        name_device = name_device or "unknown_device"
+        shared_key_complete = (shared_key + ip_local + self.ip_ns + shared_key + name_device +
+                               shared_key + self.ip_ns + ip_local)
         self.shared_key_hash = self.hash_key(shared_key_complete)
         self.management_logs.log_message(ComponentType.AGENT_MANAGEMENT, 'AgentManager -> Shared key hash generated', LogType.KEY_GENERATION, True)
         return self.shared_key_hash
