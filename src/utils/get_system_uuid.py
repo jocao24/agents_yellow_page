@@ -29,5 +29,13 @@ def get_system_uuid():
             first_device = next(iter(uuids))
             return uuids[first_device]
 
-        else:
-            return None
+        # Respaldo en Linux/WSL usando /etc/machine-id
+        try:
+            with open('/etc/machine-id', 'r') as f:
+                machine_id = f.read().strip()
+                if machine_id:
+                    return machine_id
+        except Exception:
+            pass
+
+        return None
